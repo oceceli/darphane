@@ -17,6 +17,7 @@ from freqtrade.exchange import timeframe_to_minutes
 from freqtrade.persistence import Trade
 from skopt.space import Dimension
 
+
 mostpercent = 2
 mostlength = 4
 emacol = 'MA_' + str(mostlength) + '_' + str(mostpercent)
@@ -136,12 +137,28 @@ class Darphane(IStrategy):
         }
     }
 
+    def btc_status(self) -> bool:
+        one = self.dp.get_pair_dataframe('BTC/USDT', '1m')
+        fifteen = self.dp.get_pair_dataframe('BTC/USDT', '15m')
+        thirty = self.dp.get_pair_dataframe('BTC/USDT', '30m')
+        onehour = self.dp.get_pair_dataframe('BTC/USDT', '1h')
+
+
+    # def informative_pairs(self):
+    #     pairs = self.dp.current_whitelist()
+    #     pairs.append("BTC/USDT")
+    #     pairs.append("ETH/USDT")
+    #     informative_pairs = [(pair, self.informative_timeframe) for pair in pairs]
+    #     return informative_pairs
+
     def informative_pairs(self):
-        pairs = self.dp.current_whitelist()
-        pairs.append("BTC/USDT")
-        pairs.append("ETH/USDT")
-        informative_pairs = [(pair, self.informative_timeframe) for pair in pairs]
-        return informative_pairs
+        return [
+            ("BTC/USDT", '5m')
+            ("BTC/USDT", '15m')
+            ("BTC/USDT", '30m')
+            ("BTC/USDT", '1h')
+        ]
+
 
     ## smoothed Heiken Ashi
     def HA(self, dataframe, smoothing=None):
@@ -203,6 +220,8 @@ class Darphane(IStrategy):
         stoch_fast = ta.STOCHF(dataframe)
         dataframe['fastd'] = stoch_fast['fastd']
         dataframe['fastk'] = stoch_fast['fastk']        
+
+        # dataframe['btcdown'] = self.btc_status()
         
         #StochRSI for double checking things
         period = 14
@@ -213,7 +232,7 @@ class Darphane(IStrategy):
         dataframe['srsi_k'] = stochrsi.rolling(SmoothK).mean() * 100
         dataframe['srsi_d'] = dataframe['srsi_k'].rolling(smoothD).mean()
 
-        # Bollinger Bands because obviously
+        # Bollinger Bands
         bollinger = qtpylib.bollinger_bands(qtpylib.typical_price(dataframe), window=20, stds=1)
         dataframe['bb_lowerband'] = bollinger['lower']
         dataframe['bb_middleband'] = bollinger['mid']
@@ -301,6 +320,11 @@ class Darphane(IStrategy):
             self.custom_trade_info[metadata['pair']]['candle-up-trend'] = dataframe[['date', 'candle-up-trend']].copy().set_index('date')            
             
         return dataframe
+
+
+    
+
+
 
     def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe.loc[
